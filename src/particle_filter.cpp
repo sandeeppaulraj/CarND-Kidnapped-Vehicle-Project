@@ -84,9 +84,15 @@ Particle ParticleFilter::SetAssociations(Particle& particle, const std::vector<i
     // sense_x: the associations x mapping already converted to world coordinates
     // sense_y: the associations y mapping already converted to world coordinates
 
+	particle.associations.clear();
+	particle.sense_x.clear();
+	particle.sense_y.clear();
+	
     particle.associations= associations;
     particle.sense_x = sense_x;
     particle.sense_y = sense_y;
+	
+	return particle;
 }
 
 string ParticleFilter::getAssociations(Particle best)
