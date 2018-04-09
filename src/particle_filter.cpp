@@ -30,7 +30,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 	if (is_initialized)
 		return;
 	
-	num_particles = 400;
+	num_particles = 100;
 
 	normal_distribution<double> N_x(x, std[0]);
 	normal_distribution<double> N_y(y, std[1]);
@@ -123,19 +123,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	weights.clear();
 
 	for (int i = 0; i < particles.size(); ++i) {
-		// Transform observations to MAP's coordinate system
-		std::vector<LandmarkObs> observations_map;
+		std::vector<LandmarkObs> trans_observations;
 		for (int j = 0; j < observations.size(); ++j) {
-			LandmarkObs obs;
-			obs.x = observations[j].x * cos(particles[i].theta) -
+			LandmarkObs trans_obs;
+			trans_obs.x = observations[j].x * cos(particles[i].theta) -
 					observations[j].y * sin(particles[i].theta) + particles[i].x;
-			obs.y = observations[j].x * sin(particles[i].theta) +
+			trans_obs.y = observations[j].x * sin(particles[i].theta) +
 					observations[j].y * cos(particles[i].theta) + particles[i].y;
-			obs.id = -1;
-			observations_map.push_back(obs);
+			trans_obs.id = -1;
+			trans_observations.push_back(trans_obs);
 		}
 
-		// Compute predicted measurements
 		std::vector<LandmarkObs> predicted;
 		
 		for (int j = 0; j < map_landmarks.landmark_list.size(); ++j) {
@@ -151,38 +149,30 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 			}
 		}
 
-		dataAssociation(predicted, observations_map);
+		dataAssociation(predicted, trans_observations);
 
-		double prob = 1.0;
-		double prob_i;
+		double prob_mul = 1.0;
+		double prob;
+		int check_idx;
 		for (int j = 0; j < predicted.size(); ++j) {
-			double min_dist = numeric_limits<double>::max();
-			int min_idx = -1;
-			for (int k = 0; k < observations_map.size(); ++k) {
-			// Use measurement closest to predicted
-				if (predicted[j].id == observations_map[k].id) {
-					double check_dist = dist(predicted[j].x, predicted[j].y,
-									observations_map[k].x, observations_map[k].y);
-					if (check_dist < min_dist) {
-						min_dist = check_dist;
-						min_idx = k;
-					}
-				}
-			}
-			if (min_idx != -1) {
-				prob_i = exp(-((predicted[j].x - observations_map[min_idx].x) *
-						(predicted[j].x - observations_map[min_idx].x) /
+			for (int k = 0; k < trans_observations.size(); ++k) {
+				 if (predicted[j].id == trans_observations[k].id) {
+					check_idx = k;
+					prob = exp(-((predicted[j].x - trans_observations[check_idx].x) *
+						(predicted[j].x - trans_observations[check_idx].x) /
 						(2 * std_landmark[0] * std_landmark[0]) +
-						(predicted[j].y - observations_map[min_idx].y) *
-						(predicted[j].y - observations_map[min_idx].y) /
+						(predicted[j].y - trans_observations[check_idx].y) *
+						(predicted[j].y - trans_observations[check_idx].y) /
 						(2 * std_landmark[1] * std_landmark[1]))) /
 						(2.0 * M_PI * std_landmark[0] * std_landmark[1]);
-				prob = prob * prob_i;
+						
+						prob_mul = prob_mul * prob;
+				}
 			}
 		}
     
-		weights.push_back(prob);
-		particles[i].weight = prob;
+		weights.push_back(prob_mul);
+		particles[i].weight = prob_mul;
 	}
 }
 
